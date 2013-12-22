@@ -21,12 +21,11 @@ environment, like Spark.
 """
 
 import sys
-import math
 import random
-from math import ceil
+from math import ceil, log, e as euler
 
-import numpy as np
-from numpy import exp2
+def exp2(x):
+    return 2.**(x)
 
 
 class CMSketch(object):
@@ -50,18 +49,18 @@ class CMSketch(object):
         self.width = width
         self.depth = depth
         self.hash_state = hash_state
-        self._counts = np.zeros((self.depth, self.width))
+        self._counts = [[0] * self.width for i in xrange(self.depth)]
         self._hash_fns = [CMSketch.generate_hash(n) for n in self.hash_state]
     
     def increment(self, key):
         """Increment counter for hashable object key."""
         for (i, hash_fn) in enumerate(self._hash_fns):
             j = hash_fn(key) % self.width
-            self._counts[i, j] += 1
+            self._counts[i][j] += 1
     
     def get(self, key):
         """Get estimated count for hashable object key."""
-        return min([self._counts[i, hash_fn(key) % self.width]
+        return min([self._counts[i][hash_fn(key) % self.width]
                     for (i, hash_fn) in enumerate(self._hash_fns)])
     
     def merge(self, other):
@@ -70,7 +69,9 @@ class CMSketch(object):
         The width, depth, and hash_state must be identical.
         """
         self._check_compatibility(other)
-        self._counts += other._counts
+        for i in xrange(self.depth):
+            for j in xrange(self.width):
+                self._counts[i][j] += other._counts[i][j]
     
     def _check_compatibility(self, other):
         """Check if another CMSketch is compatible with this one for merge.
@@ -163,8 +164,8 @@ class QuantileAccumulator(object):
         # precision/sketch state
         self._num_levels = num_levels
         # width and depth are determined from the Cormode paper, sec. 3.1
-        self._width = int(math.ceil(math.e / (epsilon / num_levels)))
-        self._depth = int(ceil(math.log(1. / delta)))
+        self._width = int(ceil(euler / (epsilon / num_levels)))
+        self._depth = int(ceil(log(1. / delta)))
         self._hash_state = CMSketch.generate_hash_state(self._depth, seed)
         self._sketches = [CMSketch(self._width, self._depth, self._hash_state)
                           for i in xrange(self._num_levels)]
@@ -282,11 +283,13 @@ class QuantileAccumulator(object):
     
     @staticmethod
     def _left_child_contains_value(value, level, index):
-        return (value >  (2 * index)     * exp2(-(level + 1)) and 
+        return (value > (2 * index) * exp2(-(level + 1)) and 
                 value <= (2 * index + 1) * exp2(-(level + 1)))
     
 
 if __name__ == '__main__':
+    import numpy as np
+    
     # lower_bound = 2
     # upper_bound = 4.
     # num_levels = 10
