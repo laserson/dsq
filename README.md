@@ -11,8 +11,7 @@ API).
 
 ### Installation
 
-There is currently a very weak dependency on numpy.  It would not be difficult
-to remove, at the cost of a bit of performance.
+From the repo:
 
     git clone https://github.com/laserson/dsq.git
     cd dsq
