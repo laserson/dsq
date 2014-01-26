@@ -50,18 +50,19 @@ class CMSketch(object):
         self.depth = depth
         self.hash_state = hash_state
         self._counts = [[0] * self.width for i in xrange(self.depth)]
-        self._hash_fns = [CMSketch.generate_hash(n) for n in self.hash_state]
+        self._masks = [CMSketch.generate_mask(n) for n in self.hash_state]
     
     def increment(self, key):
         """Increment counter for hashable object key."""
-        for (i, hash_fn) in enumerate(self._hash_fns):
-            j = hash_fn(key) % self.width
+        for (i, mask) in enumerate(self._masks):
+            # hash(key) ^ mask is the i-th hash fn
+            j = (hash(key) ^ mask) % self.width
             self._counts[i][j] += 1
     
     def get(self, key):
         """Get estimated count for hashable object key."""
-        return min([self._counts[i][hash_fn(key) % self.width]
-                    for (i, hash_fn) in enumerate(self._hash_fns)])
+        return min([self._counts[i][(hash(key) ^ mask) % self.width]
+                    for (i, mask) in enumerate(self._masks)])
     
     def merge(self, other):
         """Merge other CMSketch with this CMSketch.
@@ -102,6 +103,19 @@ class CMSketch(object):
         def myhash(x):
             return hash(x) ^ mask
         return myhash
+    
+    @staticmethod
+    def generate_mask(state):
+        """Generate a mask to be used for a random hash fn, given state (int).
+        
+        Returns mask, which contains random bits. Define a hash fn like so:
+        
+            def myhash(x):
+                return hash(x) ^ mask
+        """
+        random.seed(state)
+        mask = random.getrandbits(32)
+        return mask
 
 
 class QuantileAccumulator(object):
@@ -158,8 +172,6 @@ class QuantileAccumulator(object):
         # domain
         self._lower_bound = lower_bound
         self._upper_bound = upper_bound
-        self._norm = lambda x: float(x - lower_bound) / (upper_bound - lower_bound)
-        self._inv_norm = lambda x: x * (upper_bound - lower_bound) + lower_bound
         
         # precision/sketch state
         self._num_levels = num_levels
@@ -173,7 +185,8 @@ class QuantileAccumulator(object):
     def increment(self, value):
         """Increment counter for value in the domain."""
         self.total += 1
-        normed_value = self._norm(value)
+        normed_value = float(value - self._lower_bound) / (self._upper_bound -
+                                                           self._lower_bound)
         for (level, sketch) in enumerate(self._sketches):
             key = QuantileAccumulator._index_at_level(normed_value, level)
             sketch.increment(key)
@@ -217,7 +230,9 @@ class QuantileAccumulator(object):
     
     def cdf(self, value):
         """Compute estimated CDF at value in domain."""
-        normed_value = self._norm(value)
+        _norm = lambda x: float(x - self._lower_bound) / (self._upper_bound -
+                                                          self._lower_bound)
+        normed_value = _norm(value)
         return self._normed_cdf(normed_value)
     
     def _normed_cdf(self, normed_value):
@@ -239,7 +254,8 @@ class QuantileAccumulator(object):
             The value for which q of the observations lie below.  E.g., q = 0.95
             is the 95th percentile.
         """
-        return self._inv_norm(self._binary_search(q))
+        _inv_norm = lambda x: x * (self._upper_bound - self._lower_bound) + self._lower_bound
+        return _inv_norm(self._binary_search(q))
         
     def _binary_search(self, q, lo=0., hi=1.):
         if hi - lo < exp2(-(self._num_levels + 1)):
