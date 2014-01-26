@@ -178,6 +178,22 @@ class QuantileAccumulator(object):
             key = QuantileAccumulator._index_at_level(normed_value, level)
             sketch.increment(key)
     
+    def __call__(self, value_iterator):
+        """Makes QuantileAccumulator usable with PySpark .mapPartitions().
+        
+        An RDD's .mapPartitions method takes a function that consumes an
+        iterator of records and spits out an iterable for the next RDD
+        downstream.  Since QuantileAccumulator is callable, the call can be
+        performed like so:
+        
+            accums = values.mapPartitions(QuantileAccumulator(<parameters>))
+            accums.reduce(lambda x, y: x.merge(y))
+        
+        """
+        for value in value_iterator:
+            self.increment(value)
+        yield self
+    
     def merge(self, other):
         """Merge QuantileAccumulator with another compatible one."""
         self._check_compatibility(other)
@@ -285,52 +301,3 @@ class QuantileAccumulator(object):
     def _left_child_contains_value(value, level, index):
         return (value > (2 * index) * exp2(-(level + 1)) and 
                 value <= (2 * index + 1) * exp2(-(level + 1)))
-    
-
-if __name__ == '__main__':
-    import numpy as np
-    
-    # lower_bound = 2
-    # upper_bound = 4.
-    # num_levels = 10
-    # epsilon = 0.01
-    # delta = 0.01
-    # seed = 1729
-    # sample_size = 10000
-    # values = np.random.uniform(lower_bound, upper_bound, sample_size)
-    
-    # lower_bound = -10000
-    # upper_bound = 10000
-    # num_levels = 30
-    # epsilon = 0.01
-    # delta = 0.01
-    # seed = 1729
-    # sample_size = 10000
-    # values = np.random.normal(size=sample_size)
-    # accum = QuantileAccumulator(lower_bound, upper_bound, num_levels, epsilon, delta, seed)
-    # for value in values:
-    #     accum.increment(value)
-    # print accum.ppf(0.95)
-    # print np.percentile(values, 95)
-    
-    
-    lower_bound = -10000
-    upper_bound = 10000
-    num_levels = 30
-    epsilon = 0.01
-    delta = 0.01
-    seed = 1729
-    sample_size = 2000
-    nodes = 5
-    values = [np.random.normal(size=sample_size) for i in xrange(nodes)]
-    accums = []
-    for i in xrange(nodes):
-        accum = QuantileAccumulator(lower_bound, upper_bound, num_levels, epsilon, delta, seed)
-        for value in values[i]:
-            accum.increment(value)
-        accums.append(accum)
-    merged = QuantileAccumulator(lower_bound, upper_bound, num_levels, epsilon, delta, seed)
-    for accum in accums:
-        merged.merge(accum)
-    print merged.ppf(0.95)
-    print np.percentile(np.asarray(values).ravel(), 95)
