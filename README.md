@@ -65,12 +65,13 @@ epsilon = 0.001
 delta = 0.01
 seed = 1729 # optional
 
-def __init__(self, lower_bound, upper_bound, num_levels, epsilon, delta,
-             seed=1729):
-
+# create the accumulator function that will process a partition
 accum_fn = QuantileAccumulator(lower_bound, upper_bound, num_levels,
         epsilon, delta, seed)
+
+# stream the data through the accumulators
 accumulators = values.mapPartitions(accum_fn)
+# and merge them all together
 quantile_accum = accumulators.reduce(lambda x, y: x.merge(y))
 
 # compute the 95th percentile
