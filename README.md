@@ -46,36 +46,36 @@ demanded precision, the more memory is needed to store the sketch.
 Finally, the smallest interval in the dyadic partitioning represents the
 smallest precision that is attainable.
 
-    ```python
-    # Example PySpark usage
-    
-    # create a SparkContext; you need to ship the dsq.py file around the cluster
-    sc = SparkContext("spark://your.spark.master", "YourSparkApp",
-            pyFiles=["/path/to/dsq.py"])
-    
-    # create an RDD containing a bunch of random numbers
-    import random
-    values = sc.parallelize([random.uniform(0, 1) for i in xrange(10000)], 5)
-    
-    # set parameters for QuantileAccumulator
-    lower_bound = 0
-    upper_bound = 1
-    num_levels = 12
-    epsilon = 0.001
-    delta = 0.01
-    seed = 1729 # optional
-    
-    def __init__(self, lower_bound, upper_bound, num_levels, epsilon, delta,
-                 seed=1729):
-    
-    accum_fn = QuantileAccumulator(lower_bound, upper_bound, num_levels,
-            epsilon, delta, seed)
-    accumulators = values.mapPartitions(accum_fn)
-    quantile_accum = accumulators.reduce(lambda x, y: x.merge(y))
-    
-    # compute the 95th percentile
-    quantile_accum.ppf(0.95)
-    ```
+```python
+# Example PySpark usage
+
+# create a SparkContext; you need to ship the dsq.py file around the cluster
+sc = SparkContext("spark://your.spark.master", "YourSparkApp",
+        pyFiles=["/path/to/dsq.py"])
+
+# create an RDD containing a bunch of random numbers
+import random
+values = sc.parallelize([random.uniform(0, 1) for i in xrange(10000)], 5)
+
+# set parameters for QuantileAccumulator
+lower_bound = 0
+upper_bound = 1
+num_levels = 12
+epsilon = 0.001
+delta = 0.01
+seed = 1729 # optional
+
+def __init__(self, lower_bound, upper_bound, num_levels, epsilon, delta,
+             seed=1729):
+
+accum_fn = QuantileAccumulator(lower_bound, upper_bound, num_levels,
+        epsilon, delta, seed)
+accumulators = values.mapPartitions(accum_fn)
+quantile_accum = accumulators.reduce(lambda x, y: x.merge(y))
+
+# compute the 95th percentile
+quantile_accum.ppf(0.95)
+```
 
 
 [1]: http://dx.doi.org/10.1016/j.jalgor.2003.12.001
