@@ -49,7 +49,8 @@ smallest precision that is attainable.
 ```python
 # Example PySpark usage
 
-# create a SparkContext; you need to ship the dsq.py file around the cluster
+# create a SparkContext
+# NOTE: you need to ship the dsq.py file around the cluster
 sc = SparkContext("spark://your.spark.master", "YourSparkApp",
         pyFiles=["/path/to/dsq.py"])
 
@@ -66,6 +67,7 @@ delta = 0.01
 seed = 1729 # optional
 
 # create the accumulator function that will process a partition
+from dsq import QuantileAccumulator
 accum_fn = QuantileAccumulator(lower_bound, upper_bound, num_levels,
         epsilon, delta, seed)
 
