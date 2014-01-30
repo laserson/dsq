@@ -73,6 +73,7 @@ class CMSketch(object):
         for i in xrange(self.depth):
             for j in xrange(self.width):
                 self._counts[i][j] += other._counts[i][j]
+        return self
     
     def _check_compatibility(self, other):
         """Check if another CMSketch is compatible with this one for merge.
@@ -213,6 +214,7 @@ class QuantileAccumulator(object):
         for (my_sketch, other_sketch) in zip(self._sketches, other._sketches):
             my_sketch.merge(other_sketch)
         self.total += other.total
+        return self
     
     def _check_compatibility(self, other):
         """Check if another CMSketch is compatible with this one for merge.
